@@ -57,6 +57,7 @@ function setup() {
 
 function draw() {
   background(220);
+  text("Use silder to change reverb", 1, 10);
 }
 
 function keyPressed() {
