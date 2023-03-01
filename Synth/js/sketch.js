@@ -15,7 +15,7 @@ const metal = new Tone.MetalSynth({
 const reverb = new Tone.JCReverb(0.4);
 metal.connect(reverb);
 
-const osc = new Tone.OmniOscillator("C#4", "pwm").start();
+const osc = new Tone.OmniOscillator("C#4", "pwm");
 
 const ampEnv = new Tone.AmplitudeEnvelope({
   attack: 0.1,
@@ -35,10 +35,10 @@ let notes = {
   'j': 'B4',
   'k': 'C5',
   'l': 'D5'
-}
+};
 
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(500, 500);
 
   slider = new Nexus.Slider("#slider");
   reverb.toDestination();
@@ -61,6 +61,7 @@ function draw() {
 }
 
 function keyPressed() {
+  osc.start();
   let toPlay = notes[key];
   console.log(toPlay);
 
