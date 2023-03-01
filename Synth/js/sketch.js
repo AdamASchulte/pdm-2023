@@ -23,7 +23,7 @@ const ampEnv = new Tone.AmplitudeEnvelope({
   sustain: 1.0,
   release: 0.8
 })
-
+ 
 let notes = {
   'q': 'B3',
   'a': 'C4',
