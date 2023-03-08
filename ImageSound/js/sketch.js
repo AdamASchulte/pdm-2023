@@ -1,5 +1,9 @@
 let synth = new Tone.DuoSynth().toDestination();
-let metal = new Tone.MetalSynth().toDestination();
+let metal = new Tone.MetalSynth(
+  {
+    'attack': 0.9
+  }
+).toDestination();
 
 function setup() {
   createCanvas(400, 400);
