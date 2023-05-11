@@ -2,11 +2,19 @@ let startTime = 30;
 let timeRemaining = startTime;
 let score = 0;
 let spriteSheet;
-let totalAnimations = 20;
+let totalAnimations = 15;
 let spriteSheetBug;
 let bugAnimations = [];
-let state = 0;
+let state = 5;
 let hit = false;
+let connected = 0;
+let sensorData= {};
+let cursorX = 200, cursorY = 200;
+let sprite;
+let cursorSpeed = 5;
+let writer;
+//let reader;
+
 
 let squished = new Tone.Player('sounds/Squish.wav');
 let missed = new Tone.Player('sounds/Error.wav');
@@ -26,7 +34,10 @@ function setup() {
   imageMode(CENTER);
   angleMode(DEGREES);
 
-  
+  sprite = new Sprite();
+  sprite.diameter = 40;
+  sprite.color = 'black';
+
 
   squished.toDestination();
   missed.toDestination();
@@ -35,8 +46,22 @@ function setup() {
 }
 
 function draw() {
-  if(state == 0)
+  //clear();
+  if(state == 5)
   {
+    background(220);
+    if ("serial" in navigator) {
+      // The Web Serial API is supported.
+      connectButton = createButton("connect");
+      connectButton.position(10, 10);
+      connectButton.mousePressed(connect);
+    }
+    else {}
+    
+  }
+  else if(state == 0)
+  {
+    clear();
     background(220);
     textFont('Courier New');
     textStyle(BOLD);
@@ -60,25 +85,44 @@ function draw() {
     textFont('Courier New');
     textStyle(BOLD);
     textSize(20);
-
-  // image(spriteSheetBug, 200, 200, 50, 50, 200, 0, 50, 50); image of dead bug
+    
+    serialRead();
+    console.log(sensorData.sw);
+    if(sensorData.x) //use this to allow joystick to control cursor
+    {
+      cursorX += cursorSpeed * sensorData.x / 512;
+    }
+    if(sensorData.y)
+    {
+      cursorY += cursorSpeed * sensorData.y / 512;
+    }
+    if(sensorData.sw)
+    {
+      buttonPushed();
+    }
+    // if(score == totalAnimations)
+    // {
+    //   state = 2;
+    // }
+    cursorX = constrain(cursorX, 0, width);
+    cursorY = constrain(cursorY, 0, height); 
+    sprite.x = cursorX;
+    sprite.y = cursorY;
+    console.log(cursorX);
+    console.log(cursorY);
+    console.log(sensorData.x);
+    console.log(sensorData.y);
 
     text("Time: " + ceil(timeRemaining), 480, 25);
     timeRemaining -= deltaTime / 1000;
-
-    // if(timeRemaining < 0) // reset time and score when time runs out
-    // {
-    //   timeRemaining = startTime;
-    //   score = 0;
-    // }
-    text("Score: " + score, 30, 25);
+    text("Score: " + score, 75, 25);
 
     for(let i=0; i < bugAnimations.length; i++)
     {
       bugAnimations[i].draw();
     }
 
-    if(score == 20 || timeRemaining <= 0 || startTime <= 0)
+    if(score == totalAnimations || timeRemaining <= 0 || startTime <= 0)
     {
       gameOver.start();
       changeState(2);
@@ -104,6 +148,36 @@ function draw() {
   }
 }
 
+function buttonPushed(){
+  let played = 0;
+  if(state == 1)
+  {
+    for(let i = 0; i < bugAnimations.length; i++)
+  {
+    let contains = bugAnimations[i].contains(cursorX,cursorY);
+    if(contains) {
+      if(bugAnimations[i].moving != 0)
+      {
+        bugAnimations[i].stop();
+        score += 1;
+        this.u = 5;
+        if(!played)
+        {
+        squished.start();
+        played = 1;
+        }
+        hit = true;
+        
+      }
+      else
+      {
+        hit = false;
+      }
+    }
+  }
+  }
+}
+
 function mousePressed() {
 
   if(state == 1)
@@ -125,10 +199,6 @@ function mousePressed() {
         hit = false;
       }
     }
-  }
-  if(hit == 0)
-  {
-    missed.start();
   }
   }
 
@@ -236,5 +306,70 @@ function changeState(x){
   else if(x == 2)
   {
     state = 2;
+  }
+}
+
+// function serialWrite(jsonObject) {
+//   if (writer) {
+//     writer.write(encoder.encode(JSON.stringify(jsonObject)+"\n"));
+//   }
+// }
+
+function serialRead() {
+  (async () => {
+    while (reader) {
+      const { value, done } = await reader.read();
+      if (done) {
+        reader.releaseLock();
+        break;
+      }
+      try {
+        sensorData = JSON.parse(value);
+        console.log(value);
+      }
+      catch (e) {
+        console.log("bad json parse: " + e);
+      }
+    }
+  })();
+}
+
+
+async function connect() {
+  port = await navigator.serial.requestPort();
+  await port.open({ baudRate: 9600 }); 
+  state = 0;
+
+  writer = port.writable.getWriter();
+  reader = port.readable
+    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(new TransformStream(new LineBreakTransformer()))
+    .getReader();
+ }
+
+ class LineBreakTransformer {
+  constructor() {
+    // A container for holding stream data until a new line.
+    this.chunks = "";
+  }
+
+ transform(chunk, controller) {
+  // Append new chunks to existing chunks.
+  this.chunks += chunk;
+  // For each line breaks in chunks, send the parsed lines out.
+  const lines = this.chunks.split("\n");
+  this.chunks = lines.pop();
+  lines.forEach((line) => controller.enqueue(line));
+}
+
+flush(controller) {
+  // When the stream is closed, flush any remaining chunks out.
+  controller.enqueue(this.chunks);
+}
+}
+
+function serialWrite(jsonObject) {
+  if (writer) {
+    writer.write(encoder.encode(JSON.stringify(jsonObject)+"\n"));
   }
 }
